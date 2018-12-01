@@ -33,13 +33,18 @@ else(APRILTAG_INCLUDE_DIR)
   message(STATUS "apriltag found: ${APRILTAG_INCLUDE_DIR}")
 endif()
 
+find_package (Threads REQUIRED)
+
 INCLUDE_DIRECTORIES(${APRILTAG_INCLUDE_DIR})
 
 #SET(Apriltag_detection_SOURCES <files>)
 #SET(Apriltag_detection_HEADERS <files>)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
+set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+
+set(EXTRA_FLAGS "-Wall ${CMAKE_THREAD_LIBS_INIT}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS} ${CMAKE_REQUIRED_LIBRARIES}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS} ${CMAKE_REQUIRED_LIBRARIES}")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
@@ -47,4 +52,4 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #add_subdirectory(examples)
 
 add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
-target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${OPENCV_LDFLAGS})
+target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS})
