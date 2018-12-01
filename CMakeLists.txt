@@ -47,4 +47,4 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #add_subdirectory(examples)
 
 add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
-target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} )
+target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${OPENCV_LDFLAGS})
