@@ -40,14 +40,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
-#add_subdirectory(src)
-#include_directories(src)
-
-#INCLUDE()
-#ADD_DEFINITIONS()
+#add_subdirectory(examples)
 
 #include_directories(include ${OpenCV_INCLUDE_DIRS} ${apriltag_INCLUDE_DIRS})
 
-add_executable(apriltag_basis_test src/apriltag_basis_test.cpp)
-
+add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
 target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} )
