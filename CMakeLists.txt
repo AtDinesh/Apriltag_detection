@@ -15,7 +15,7 @@ endif(OPENCV_FOUND)
 #the pkgconfig in which the apriltag.pc file is should be in the PKG_CONFIG_PATH
 
 find_path(APRILTAG_INCLUDE_DIR NAMES apriltag.h PATH_SUFFIXES "apriltag" ${APRILTAG_INCLUDE_PATH})
-find_library(APRILTAG_LIBRARY NAMES apriltag)
+find_library(APRILTAG_LIBRARY NAMES apriltag PATH_SUFFIXES "${CMAKE_LIBRARY_ARCHITECTURE}" "apriltag" ${APRILTAG_LIBRARY_PATH})
 
 if(NOT APRILTAG_LIBRARY)
   message(FATAL_ERROR "apriltag not found")
