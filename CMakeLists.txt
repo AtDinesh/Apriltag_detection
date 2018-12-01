@@ -2,17 +2,21 @@ project(Apriltag_detection C CXX)
 
 cmake_minimum_required ( VERSION 2.8 )
 
-find_package( OpenCV 2.4 REQUIRED )
+find_package( OpenCV REQUIRED )
+include(FindPkgConfig)
+pkg_search_module(OPENCV opencv>=2.3 opencv-2.3.1 opencv-3.0.0)
 
 if(OPENCV_FOUND)
+  message(STATUS "opencv found: ${OpenCV_INCLUDE_DIRS}")
   include_directories(${OPENCV_INCLUDE_DIRS})
-  #add_subdirectory(opencv)
+else(NOT OPENCV_FOUND)
+  message(FATAL_ERROR "opencv_include_dirs not found")
 endif(OPENCV_FOUND)
 
-#it is not possible to find apriltag library using find_package yet.
-#we need to use find_path and find_library.
-#the install folder of the library should be in the CMAKE_PREFIX_PATH
-#the pkgconfig in which the apriltag.pc file is should be in the PKG_CONFIG_PATH
+#It is not possible to find apriltag library using find_package yet.
+#We need to use find_path and find_library.
+#The install folder of the library should be in the CMAKE_PREFIX_PATH.
+#The pkgconfig folder in which the apriltag.pc file is should be in the PKG_CONFIG_PATH.
 
 find_path(APRILTAG_INCLUDE_DIR NAMES apriltag.h PATH_SUFFIXES "apriltag" ${APRILTAG_INCLUDE_PATH})
 find_library(APRILTAG_LIBRARY NAMES apriltag PATH_SUFFIXES "${CMAKE_LIBRARY_ARCHITECTURE}" "apriltag" ${APRILTAG_LIBRARY_PATH})
@@ -41,8 +45,6 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
 #add_subdirectory(examples)
-
-#include_directories(include ${OpenCV_INCLUDE_DIRS} ${apriltag_INCLUDE_DIRS})
 
 add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
 target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} )
