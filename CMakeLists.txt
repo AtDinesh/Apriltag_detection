@@ -37,6 +37,7 @@ find_package (Threads REQUIRED)
 
 INCLUDE_DIRECTORIES(${APRILTAG_INCLUDE_DIR})
 
+link_libraries(apriltag m)
 #SET(Apriltag_detection_SOURCES <files>)
 #SET(Apriltag_detection_HEADERS <files>)
 
@@ -48,8 +49,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS} ${CMAKE_REQUIRED_LIBRARIES}
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
-
-#add_subdirectory(examples)
 
 add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
 target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS} m)
