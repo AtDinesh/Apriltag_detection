@@ -12,7 +12,7 @@ It should then be enough to run
 
     make install
 
-There is no CMakeLists file associated to the original apriltag library. Running the aforementioned command should be enough to install the library. You may have some permission problems due to the installation of the library in `/usr/lib`.
+There is no CMakeLists file associated to the original apriltag library. Running the aforementioned command should be enough to install the library. You may have some permission problems due to the installation of the library and creation of the file `/usr/local/lib/libapriltag.so`.
 It is possible to change the installation directory by specifying the `PREFIX` variable in the first line of the Makefile.
 
 Please be aware that if the installation directory is changed, some environment variables need to be updated as well so that the library can be found for building other programs.
