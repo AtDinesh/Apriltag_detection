@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
                 pjpeg_destroy(pjpeg);
             }
 
-            /*if (im == NULL) {
+            if (im == NULL) {
                 printf("couldn't load %s\n", path);
                 continue;
             }
