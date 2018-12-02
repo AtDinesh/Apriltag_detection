@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
@@ -104,7 +105,6 @@ int main(int argc, char *argv[])
                     if (td->debug)
                         image_u8_write_pnm(im, "debug_invariant.pnm");
                 }
-
                 pjpeg_destroy(pjpeg);
             }
 
@@ -112,7 +112,55 @@ int main(int argc, char *argv[])
                 printf("couldn't load %s\n", path);
                 continue;
             }
+
+            zarray_t *detections = apriltag_detector_detect(td, im);
+
+            for (int i = 0; i < zarray_size(detections); i++) {
+                apriltag_detection_t *det;
+                zarray_get(detections, i, &det);
+
+                if (!quiet)
+                    printf("detection %3d: id (%2dx%2d)-%-4d, hamming %d, goodness %8.3f, margin %8.3f\n",
+                           i, det->family->d*det->family->d, det->family->h, det->id, det->hamming, det->goodness, det->decision_margin);
+
+                hamm_hist[det->hamming]++;
+                total_hamm_hist[det->hamming]++;
+            }
+
+            apriltag_detections_destroy(detections);
+
+            if (!quiet) {
+                timeprofile_display(td->tp);
+            }
+
+            total_quads += td->nquads;
+
+            if (!quiet)
+                printf("hamm ");
+
+            for (int i = 0; i < hamm_hist_max; i++)
+                printf("%5d ", hamm_hist[i]);
+
+            double t =  timeprofile_total_utime(td->tp) / 1.0E3;
+            total_time += t;
+            printf("%12.3f ", t);
+            printf("%5d", td->nquads);
+
+            printf("\n");
+
+            image_u8_destroy(im);
         }
+
+        printf("Summary\n");
+
+        printf("hamm ");
+
+        for (int i = 0; i < hamm_hist_max; i++)
+            printf("%5d ", total_hamm_hist[i]);
+        printf("%12.3f ", total_time);
+        printf("%5d", total_quads);
+        printf("\n");
+
     }
 
     return 0;
