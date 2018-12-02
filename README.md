@@ -20,3 +20,17 @@ For example, if the `PREFIX` is set to `/local/users/<login>/install/`, then you
 
     export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/local/users/<login>/install/lib/
     export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/local/users/<login>/install/lib/pkgconfig
+
+You may also need to add to you .bashrc: 
+
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/local/users/<login>/install/lib
+    export PATH=${PATH}:/local/users/<login>/install/bin
+    export CPATH=${CPATH}:/local/users/<login>/install/include
+
+If `make` returns an error at the end of installation due to `ldconfig`, then you can just run
+
+    sudo ldconfig
+
+Finally, some other dependencies are required:
+* OpenCV (version >= 2.3)
+* Threads library
