@@ -17,6 +17,14 @@
 #include "common/pjpeg.h"
 #include "common/zarray.h"
 
+bool str_ends_with (std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     apriltag_family_t *tf = NULL;
@@ -41,6 +49,18 @@ int main(int argc, char *argv[])
         if (maxiters > 1)
             printf("iter %d / %d\n", iter + 1, maxiters);
 
+        for (int input = 1; input <= argc; input++) {
+
+            int hamm_hist[hamm_hist_max];
+            memset(hamm_hist, 0, sizeof(hamm_hist));
+
+            char *path = argv[input];
+            //zarray_get(inputs, input, &path);
+            if (!quiet)
+                printf("loading %s\n", path);
+            else
+                printf("%20s ", path);
+        }
     }
 
     return 0;
