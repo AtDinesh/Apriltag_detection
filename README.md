@@ -10,7 +10,7 @@ In order to use apriltag as an external library it is first required to install 
 To install this library, you need to extract the files of the archive and then move to the folder the extraction just created.
 It should then be enough to run 
 
-    make
+    make install
 
 There is no CMakeLists file associated to the original apriltag library. Running the aforementioned command should be enough to install the library. You may have some permission problems due to the installation of the library in `/usr/lib`.
 It is possible to change the installation directory by specifying the `PREFIX` variable in the first line of the Makefile.
