@@ -36,9 +36,10 @@ int main(int argc, char *argv[])
     cv::Mat frame, gray;
 
     int quiet = 0;
-    int maxiters = 5;
+    int maxiters = 1;
     const int hamm_hist_max = 10;
-
+    const int inputs = argc -1;
+    printf("nb of images %d\n", argc-1);
     for (int iter = 0; iter < maxiters; iter++) {
 
         int total_quads = 0;
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
         if (maxiters > 1)
             printf("iter %d / %d\n", iter + 1, maxiters);
 
-        for (int input = 1; input <= argc; input++) {
+        for (int input = 1; input <= inputs; input++) {
 
             int hamm_hist[hamm_hist_max];
             memset(hamm_hist, 0, sizeof(hamm_hist));
