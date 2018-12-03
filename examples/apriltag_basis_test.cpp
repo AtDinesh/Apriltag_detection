@@ -16,6 +16,7 @@
 #include "common/image_u8.h"
 #include "common/image_u8x4.h"
 #include "common/pjpeg.h"
+#include "common/homography.h"
 #include "common/zarray.h"
 
 bool str_ends_with (std::string const &fullString, std::string const &ending) {
@@ -33,6 +34,12 @@ int main(int argc, char *argv[])
 
     apriltag_detector_t *td = apriltag_detector_create();
     apriltag_detector_add_family(td, tf);
+
+    //defined camera parameters
+    double fx(809.135074);
+    double fy(809.410030);
+    double cx(335.684471);
+    double cy(257.352121);
 
     cv::Mat frame, gray;
 
@@ -118,10 +125,18 @@ int main(int argc, char *argv[])
             for (int i = 0; i < zarray_size(detections); i++) {
                 apriltag_detection_t *det;
                 zarray_get(detections, i, &det);
+                matd_t *pose_matrix = homography_to_pose(det->H, fx, fy, cx, cy);
 
                 if (!quiet)
+                {
                     printf("detection %3d: id (%2dx%2d)-%-4d, hamming %d, goodness %8.3f, margin %8.3f\n",
                            i, det->family->d*det->family->d, det->family->h, det->id, det->hamming, det->goodness, det->decision_margin);
+                    printf("Homography:\n");
+                    matd_print(det->H, "%15f");
+
+                    printf("Pose:\n");
+                    matd_print(pose_matrix, "%15f");
+                }
 
                 hamm_hist[det->hamming]++;
                 total_hamm_hist[det->hamming]++;
