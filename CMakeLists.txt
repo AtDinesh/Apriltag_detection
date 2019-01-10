@@ -1,4 +1,5 @@
 project(Apriltag_detection C CXX)
+set (CMAKE_CXX_STANDARD 11)
 
 cmake_minimum_required ( VERSION 2.8 )
 
@@ -12,6 +13,10 @@ if(OPENCV_FOUND)
 else(NOT OPENCV_FOUND)
   message(FATAL_ERROR "opencv_include_dirs not found")
 endif(OPENCV_FOUND)
+
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 
 #It is not possible to find apriltag library using find_package yet.
 #We need to use find_path and find_library.
@@ -52,3 +57,6 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_executable(apriltag_basis_test examples/apriltag_basis_test.cpp)
 target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS} m)
+
+add_executable(pose_estimation_benchmark examples/pose_estimation_benchmark.cpp)
+target_link_libraries(pose_estimation_benchmark ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS} m)
