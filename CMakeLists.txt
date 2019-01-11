@@ -37,7 +37,7 @@ find_package (Threads REQUIRED)
 
 INCLUDE_DIRECTORIES(${APRILTAG_INCLUDE_DIR})
 
-link_libraries(apriltag m)
+link_libraries(apriltag opencv_imgcodecs m)
 #SET(Apriltag_detection_SOURCES <files>)
 #SET(Apriltag_detection_HEADERS <files>)
 
