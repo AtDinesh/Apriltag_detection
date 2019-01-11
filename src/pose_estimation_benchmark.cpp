@@ -24,10 +24,16 @@
 #include "common/zarray.h"
 
 // Functions declarations
+// TODO: comments
 apriltag_detector_t *create_detector();
 Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
 Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
 void normalize_transform(Eigen::Affine3d &M, double tag_width);
+std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width);
+cv::Point2d projectedToPix(const Eigen::Vector3d &projected);
+void print_points(cv::Mat im_inout, const std::vector<cv::Point2d> &points, const cv::Scalar &color, double radius, double thickness);
+double reprojection_error(const std::vector<cv::Point2d> &pvec, const std::vector<cv::Point2d> &rep_pvec);
+std::vector<cv::Point2d> get_corners(apriltag_detection_t *det);
 
 
 int main(int argc, char *argv[]){
@@ -38,16 +44,24 @@ int main(int argc, char *argv[]){
     double fy = 711;
     std::vector<double> k_vec = {cx, cy, fx, fy};
     double tag_width = 0.055;
+    int scale = 2;  // to visualize
+
+    // Corners from apriltag are in the following order (anti clockwise, looking at the tag)
+    Eigen::Vector3d p1; p1 <<  1, -1, 0; p1 = p1*tag_width/2; // bottom left
+    Eigen::Vector3d p2; p2 << -1, -1, 0; p2 = p2*tag_width/2; // bottom right
+    Eigen::Vector3d p3; p3 << -1,  1, 0; p3 = p3*tag_width/2; // top right
+    Eigen::Vector3d p4; p4 <<  1,  1, 0; p4 = p4*tag_width/2; // top left
+    std::vector<Eigen::Vector3d> tag_X_vec = {p1, p2, p3, p4};
 
     apriltag_detector_t *detector_at = create_detector();
     for (int i=1; i < argc; i++) {
         // Get Image with opencv
-        std::string path = "./images/" + std::string(argv[i]);
+        std::string path = "../images/" + std::string(argv[i]);
         cv::Mat img;
         cv::Mat grayscale_image;
         img = cv::imread(path, CV_LOAD_IMAGE_COLOR);
-        if (img.data){std::cout << "Image read successfully: " << path << std::endl;}
-        else {std::cout << "!! Could not be read: " << path << std::endl;}
+        if (img.data){std::cout << "\nImage read successfully: " << path << std::endl;}
+        else {std::cout << "!! Could not be read: " << path << std::endl; continue;}
         cv::cvtColor(img, grayscale_image, cv::COLOR_BGR2GRAY);
         // Make an image_u8_t header for the Mat data
         image_u8_t imu8gray = {   .width  = grayscale_image.cols,
@@ -65,13 +79,34 @@ int main(int argc, char *argv[]){
             normalize_transform(M_april, tag_width);
             normalize_transform(M_opencv, tag_width);
 
-            std::cout << std::endl;            
+            // std::cout << std::endl;            
+            // std::cout << "Tag id: " << det->id << std::endl; 
+            // std::cout << "M_april" << std::endl;            
+            // std::cout << M_april.matrix() << std::endl;
+            // std::cout << "M_opencv" << std::endl;            
+            // std::cout << M_opencv.matrix() << std::endl;
+
+            std::vector<cv::Point2d> reproj_corners_april = pinholePix(tag_X_vec, M_april, k_vec, tag_width);
+            std::vector<cv::Point2d> reproj_corners_opencv = pinholePix(tag_X_vec, M_opencv, k_vec, tag_width);
+
+            // std::cout << std::endl;            
             std::cout << "Tag id: " << det->id << std::endl; 
-            std::cout << "M_april" << std::endl;            
-            std::cout << M_april.matrix() << std::endl;
-            std::cout << "M_opencv" << std::endl;            
-            std::cout << M_opencv.matrix() << std::endl;
-        }
+            // std::cout << "reproj_corners_april" << std::endl;            
+            // std::cout << reproj_corners_april << std::endl;
+            // std::cout << "reproj_corners_opencv" << std::endl;            
+            // std::cout << reproj_corners_opencv << std::endl;
+            std::cout << "Reprojection error april : " << reprojection_error(get_corners(det), reproj_corners_april) << std::endl;
+            std::cout << "Reprojection error opencv: " << reprojection_error(get_corners(det), reproj_corners_opencv) << std::endl;
+
+            print_points(img, get_corners(det), cv::viz::Color::blue(), 1, 1);
+            print_points(img, reproj_corners_april, cv::viz::Color::red(), 1, 1);
+            print_points(img, reproj_corners_opencv, cv::viz::Color::green(), 1, 1);
+
+        }   
+            cv::Size s = img.size()*scale;
+            cv::resize(img, img, s, 0, 0, cv::INTER_CUBIC);
+            cv::imshow(argv[i], img);
+            cv::waitKey(0);
     }
 
     // Should also free the tag family used...
@@ -99,13 +134,8 @@ Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<dou
 }
 
 Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec){
-    // Corners from apriltag are in the following order (anti clockwise, looking at the tag)
-    std::vector<cv::Point2d> corners_pix(4);
-    for (int i = 0; i < 4; i++)
-    {
-        corners_pix[i].x = det->p[i][0];
-        corners_pix[i].y = det->p[i][1];
-    }
+    std::vector<cv::Point2d> corners_pix = get_corners(det);
+
 
     std::vector<cv::Point3d> obj_pts;
     // Same order as the 2D corners (anti clockwise, looking at the tag)
@@ -179,10 +209,53 @@ void normalize_transform(Eigen::Affine3d &M, double tag_width){
 }
 
 
-cv::Point2d projectToPix(const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width){
+std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width){
     Eigen::Matrix3d K;
     K << kvec[2], 0, kvec[0],
          0, kvec[3], kvec[1],
          0, 0, 1;
 
+    std::vector<cv::Point2d> imgpix_vec;
+    for (unsigned int i=0; i < t_X_vec.size(); i++){
+        Eigen::Vector3d projected = K * c_M_t * t_X_vec[i];
+        imgpix_vec.push_back(projectedToPix(projected));
+    }
+    return imgpix_vec;
+}
+
+cv::Point2d projectedToPix(const Eigen::Vector3d &projected){
+    cv::Point2d imgpix = cv::Point2d(projected(0)/projected(2), projected(1)/projected(2));
+    return imgpix;
+}
+
+void print_points(cv::Mat im_inout, const std::vector<cv::Point2d> &points, const cv::Scalar &color, double radius, double thickness){
+    for (unsigned int i=0; i < points.size(); i++){
+        cv::circle(im_inout, points[i], radius, color, thickness);
+    }
+}
+
+std::vector<cv::Point2d> get_corners(apriltag_detection_t *det){
+    std::vector<cv::Point2d> corners_pix(4);
+    for (int i = 0; i < 4; i++)
+    {
+        corners_pix[i].x = det->p[i][0];
+        corners_pix[i].y = det->p[i][1];
+    }
+    return corners_pix;
+}
+
+double reprojection_error(const std::vector<cv::Point2d> &pvec, const std::vector<cv::Point2d> &rep_pvec){
+    // Check same size pvec and rep_pvec
+    double error = 0;
+    std::cout << "YO " << std::endl;
+    std::cout << "rep_pvec:           \n" << rep_pvec << std::endl;
+    std::cout << "pvec:               \n" << pvec << std::endl;
+    for (unsigned i=0; i < pvec.size(); i++){
+        std::cout << i << std::endl;
+        // std::cout << "rep_pvec[i] - pvec[i]: " << rep_pvec[i] - pvec[i] << std::endl;
+        std::cout << "norm: " << cv::norm(rep_pvec[i]-pvec[i]) << std::endl;
+        error += cv::norm(rep_pvec[i]-pvec[i]);
+
+    }
+    return error/pvec.size();
 }
