@@ -10,6 +10,7 @@ cd bin/
 
 TODO:
 - add parameters
+- Add a 3rd estimation using solvePnPRansac y fusing several tag detections
 - 2D viz with Rviz
 */
 
@@ -40,15 +41,7 @@ TODO:
 
 // Functions declarations
 // TODO: comments
-apriltag_detector_t *create_detector();
-Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
-Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
-void normalize_transform(Eigen::Affine3d &M, double tag_width);
-std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width);
-cv::Point2d projectedToPix(const Eigen::Vector3d &projected);
-void print_points(cv::Mat im_inout, const std::vector<cv::Point2d> &points, const cv::Scalar &color, double radius, double thickness);
-double reprojection_error(const std::vector<cv::Point2d> &pvec, const std::vector<cv::Point2d> &rep_pvec);
-std::vector<cv::Point2d> get_corners(apriltag_detection_t *det);
+#include "pose_estimation_benchmark.hpp"
 
 
 int main(int argc, char *argv[]){
