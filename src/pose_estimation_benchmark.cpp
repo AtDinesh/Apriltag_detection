@@ -47,10 +47,10 @@ int main(int argc, char *argv[]){
     int scale = 2;  // to visualize
 
     // Corners from apriltag are in the following order (anti clockwise, looking at the tag)
-    Eigen::Vector3d p1; p1 <<  1, -1, 0; p1 = p1*tag_width/2; // bottom left
-    Eigen::Vector3d p2; p2 << -1, -1, 0; p2 = p2*tag_width/2; // bottom right
-    Eigen::Vector3d p3; p3 << -1,  1, 0; p3 = p3*tag_width/2; // top right
-    Eigen::Vector3d p4; p4 <<  1,  1, 0; p4 = p4*tag_width/2; // top left
+    Eigen::Vector3d p1; p1 << -1, -1, 0; p1 = p1*tag_width/2; // top left
+    Eigen::Vector3d p2; p2 <<  1, -1, 0; p2 = p2*tag_width/2; // top right
+    Eigen::Vector3d p3; p3 <<  1,  1, 0; p3 = p3*tag_width/2; // bottom right
+    Eigen::Vector3d p4; p4 << -1,  1, 0; p4 = p4*tag_width/2; // bottom left
     std::vector<Eigen::Vector3d> tag_X_vec = {p1, p2, p3, p4};
 
     apriltag_detector_t *detector_at = create_detector();
@@ -139,10 +139,10 @@ Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<do
 
     std::vector<cv::Point3d> obj_pts;
     // Same order as the 2D corners (anti clockwise, looking at the tag)
-    obj_pts.emplace_back(-1,  1, 0); // bottom left
-    obj_pts.emplace_back( 1,  1, 0); // bottom right
-    obj_pts.emplace_back( 1, -1, 0); // top right
     obj_pts.emplace_back(-1, -1, 0); // top left
+    obj_pts.emplace_back( 1, -1, 0); // top right
+    obj_pts.emplace_back( 1,  1, 0); // bottom right
+    obj_pts.emplace_back(-1,  1, 0); // bottom left
 
     // Solve for pose
     // The estimated r and t brings points from tag frame to camera frame
@@ -247,15 +247,8 @@ std::vector<cv::Point2d> get_corners(apriltag_detection_t *det){
 double reprojection_error(const std::vector<cv::Point2d> &pvec, const std::vector<cv::Point2d> &rep_pvec){
     // Check same size pvec and rep_pvec
     double error = 0;
-    std::cout << "YO " << std::endl;
-    std::cout << "rep_pvec:           \n" << rep_pvec << std::endl;
-    std::cout << "pvec:               \n" << pvec << std::endl;
     for (unsigned i=0; i < pvec.size(); i++){
-        std::cout << i << std::endl;
-        // std::cout << "rep_pvec[i] - pvec[i]: " << rep_pvec[i] - pvec[i] << std::endl;
-        std::cout << "norm: " << cv::norm(rep_pvec[i]-pvec[i]) << std::endl;
         error += cv::norm(rep_pvec[i]-pvec[i]);
-
     }
     return error/pvec.size();
 }
