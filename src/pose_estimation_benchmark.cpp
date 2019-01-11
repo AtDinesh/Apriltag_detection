@@ -1,3 +1,18 @@
+/*
+Benchmark to compare tag pose estimation directly from apriltag library and using solvePnP from opencv.
+The criterion is the average reprojection error of corners of each tag.
+SolvePnP is shown to work
+
+To use:
+cd bin/
+./pose_estimation_benchmark <your.png> <list.jpg> <of.jpg> <files.png>
+
+
+TODO:
+- add parameters
+- 2D viz with Rviz
+*/
+
 
 #include <stdio.h>
 #include <iostream>
@@ -44,13 +59,13 @@ int main(int argc, char *argv[]){
     double fy = 711;
     std::vector<double> k_vec = {cx, cy, fx, fy};
     double tag_width = 0.055;
-    int scale = 2;  // to visualize
+    int scale = 3;  // to visualize
 
     // Corners from apriltag are in the following order (anti clockwise, looking at the tag)
-    Eigen::Vector3d p1; p1 << -1, -1, 0; p1 = p1*tag_width/2; // top left
-    Eigen::Vector3d p2; p2 <<  1, -1, 0; p2 = p2*tag_width/2; // top right
-    Eigen::Vector3d p3; p3 <<  1,  1, 0; p3 = p3*tag_width/2; // bottom right
-    Eigen::Vector3d p4; p4 << -1,  1, 0; p4 = p4*tag_width/2; // bottom left
+    Eigen::Vector3d p1; p1 << -1,  1, 0; p1 = p1*tag_width/2; // bottom left
+    Eigen::Vector3d p2; p2 <<  1,  1, 0; p2 = p2*tag_width/2; // bottom right
+    Eigen::Vector3d p3; p3 <<  1, -1, 0; p3 = p3*tag_width/2; // top right
+    Eigen::Vector3d p4; p4 << -1, -1, 0; p4 = p4*tag_width/2; // top left
     std::vector<Eigen::Vector3d> tag_X_vec = {p1, p2, p3, p4};
 
     apriltag_detector_t *detector_at = create_detector();
@@ -74,32 +89,32 @@ int main(int argc, char *argv[]){
         for (int i = 0; i < zarray_size(detections); i++) {
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
-            Eigen::Affine3d M_april = umich_pose_estimation(det, k_vec);
+            Eigen::Affine3d M_umich = umich_pose_estimation(det, k_vec);
             Eigen::Affine3d M_opencv = opencv_pose_estimation(det, k_vec);           
-            normalize_transform(M_april, tag_width);
+            normalize_transform(M_umich, tag_width);
             normalize_transform(M_opencv, tag_width);
 
             // std::cout << std::endl;            
             // std::cout << "Tag id: " << det->id << std::endl; 
-            // std::cout << "M_april" << std::endl;            
-            // std::cout << M_april.matrix() << std::endl;
+            // std::cout << "M_umich" << std::endl;            
+            // std::cout << M_umich.matrix() << std::endl;
             // std::cout << "M_opencv" << std::endl;            
             // std::cout << M_opencv.matrix() << std::endl;
 
-            std::vector<cv::Point2d> reproj_corners_april = pinholePix(tag_X_vec, M_april, k_vec, tag_width);
+            std::vector<cv::Point2d> reproj_corners_umich = pinholePix(tag_X_vec, M_umich, k_vec, tag_width);
             std::vector<cv::Point2d> reproj_corners_opencv = pinholePix(tag_X_vec, M_opencv, k_vec, tag_width);
 
             // std::cout << std::endl;            
             std::cout << "Tag id: " << det->id << std::endl; 
-            // std::cout << "reproj_corners_april" << std::endl;            
-            // std::cout << reproj_corners_april << std::endl;
+            // std::cout << "reproj_corners_umich" << std::endl;            
+            // std::cout << reproj_corners_umich << std::endl;
             // std::cout << "reproj_corners_opencv" << std::endl;            
             // std::cout << reproj_corners_opencv << std::endl;
-            std::cout << "Reprojection error april : " << reprojection_error(get_corners(det), reproj_corners_april) << std::endl;
+            std::cout << "Reprojection error umich : " << reprojection_error(get_corners(det), reproj_corners_umich) << std::endl;
             std::cout << "Reprojection error opencv: " << reprojection_error(get_corners(det), reproj_corners_opencv) << std::endl;
 
             print_points(img, get_corners(det), cv::viz::Color::blue(), 1, 1);
-            print_points(img, reproj_corners_april, cv::viz::Color::red(), 1, 1);
+            print_points(img, reproj_corners_umich, cv::viz::Color::red(), 1, 1);
             print_points(img, reproj_corners_opencv, cv::viz::Color::green(), 1, 1);
 
         }   
@@ -136,17 +151,15 @@ Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<dou
 Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec){
     std::vector<cv::Point2d> corners_pix = get_corners(det);
 
-
     std::vector<cv::Point3d> obj_pts;
     // Same order as the 2D corners (anti clockwise, looking at the tag)
-    obj_pts.emplace_back(-1, -1, 0); // top left
-    obj_pts.emplace_back( 1, -1, 0); // top right
-    obj_pts.emplace_back( 1,  1, 0); // bottom right
     obj_pts.emplace_back(-1,  1, 0); // bottom left
+    obj_pts.emplace_back( 1,  1, 0); // bottom right
+    obj_pts.emplace_back( 1, -1, 0); // top right
+    obj_pts.emplace_back(-1, -1, 0); // top left
 
     // Solve for pose
     // The estimated r and t brings points from tag frame to camera frame
-    // r = c_r_w, t = c_t_w
     cv::Mat rvec, tvec;
     cv::Mat K = (cv::Mat_<double>(3,3) << kvec[2], 0, kvec[0],
                                           0, kvec[3], kvec[1],
@@ -229,18 +242,21 @@ cv::Point2d projectedToPix(const Eigen::Vector3d &projected){
 }
 
 void print_points(cv::Mat im_inout, const std::vector<cv::Point2d> &points, const cv::Scalar &color, double radius, double thickness){
+    double scale_radius = 1;
     for (unsigned int i=0; i < points.size(); i++){
-        cv::circle(im_inout, points[i], radius, color, thickness);
+        cv::circle(im_inout, points[i], radius*scale_radius, color, thickness);
+        // scale_radius += 1;
     }
 }
 
 std::vector<cv::Point2d> get_corners(apriltag_detection_t *det){
     std::vector<cv::Point2d> corners_pix(4);
     for (int i = 0; i < 4; i++)
-    {
+    {   
         corners_pix[i].x = det->p[i][0];
         corners_pix[i].y = det->p[i][1];
     }
+
     return corners_pix;
 }
 
