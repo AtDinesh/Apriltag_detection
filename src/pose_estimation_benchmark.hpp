@@ -2,11 +2,27 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry> 
 
+
+// struct {
+//     double cx;
+//     double cy;
+//     double fx;
+//     double fy;
+//     double tag_width;
+//     int scale;
+// } misc_params;
+
 /* 
 Create an apriltag detector pointer with default parameters (TODO) 
 \return detection pointer
 */
 apriltag_detector_t *create_detector();
+
+void ippe_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width, 
+                            Eigen::Affine3d &M1, 
+                            float &rep_error1, 
+                            Eigen::Affine3d &M2, 
+                            float &rep_error2);    
 
 /*
 Pose estimation using the librapriltag pose retrieval algorithm from the homography matrix (obtained through DLT)
@@ -14,7 +30,7 @@ Pose estimation using the librapriltag pose retrieval algorithm from the homogra
 \param kvec: camera intrinsics vector [cx, cy, fx, fy]
 \return estimated pose c_M_t
 */
-Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
+Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width);
 
 /*
 Pose estimation using the opencv solvePnP pose retrieval algorithm from the corners of a tag 
@@ -22,7 +38,7 @@ Pose estimation using the opencv solvePnP pose retrieval algorithm from the corn
 \param kvec: camera intrinsics vector [cx, cy, fx, fy]
 \return estimated pose c_M_t
 */
-Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec);
+Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width);
 
 /*
 Normalize the translation part of a transformation (if given in "tag units")
@@ -38,7 +54,7 @@ Project points in the target frame to 2D pixels using the pinhole model
 \param tag_width: width of the tag in meters
 \return vector of pixels as 2D points 
 */
-std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width);
+std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec);
 
 /*
 Bring homogeneous projected points to the pixel space (euclidianisation)
@@ -72,3 +88,8 @@ Extract corners from detection
 \return vector of 2D pixels
 */
 std::vector<cv::Point2d> get_corners(apriltag_detection_t *det);
+
+
+Eigen::Affine3d opencv_pose_to_eigen(const cv::Mat &rvec, const cv::Mat &tvec);
+
+void rot2vec(cv::InputArray _R, cv::OutputArray _r);

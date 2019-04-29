@@ -55,5 +55,5 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 add_executable(apriltag_basis_test src/apriltag_basis_test.cpp)
 target_link_libraries(apriltag_basis_test ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS} m)
 
-add_executable(pose_estimation_benchmark src/pose_estimation_benchmark.cpp src/pose_estimation_benchmark.hpp)
+add_executable(pose_estimation_benchmark src/pose_estimation_benchmark.cpp src/pose_estimation_benchmark.hpp src/ippe.cpp src/ippe.h)
 target_link_libraries(pose_estimation_benchmark ${APRILTAG_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${OPENCV_LDFLAGS} m)

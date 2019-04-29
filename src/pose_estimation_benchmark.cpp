@@ -17,6 +17,7 @@ TODO:
 
 #include <stdio.h>
 #include <iostream>
+#include <ctime>
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
@@ -26,6 +27,8 @@ TODO:
 #include <Eigen/Geometry> 
 #include "opencv2/opencv.hpp"
 #include <opencv2/core/eigen.hpp>
+#include "opencv2/imgcodecs.hpp"
+
 
 #include "apriltag.h"
 #include "tag36h11.h"
@@ -39,8 +42,8 @@ TODO:
 #include "common/homography.h"
 #include "common/zarray.h"
 
-// Functions declarations
-// TODO: comments
+#include "ippe.h"
+
 #include "pose_estimation_benchmark.hpp"
 
 
@@ -52,13 +55,14 @@ int main(int argc, char *argv[]){
     double fy = 711;
     std::vector<double> k_vec = {cx, cy, fx, fy};
     double tag_width = 0.055;
-    int scale = 3;  // to visualize
+    int scale = 2;  // to visualize
 
     // Corners from apriltag are in the following order (anti clockwise, looking at the tag)
-    Eigen::Vector3d p1; p1 << -1,  1, 0; p1 = p1*tag_width/2; // bottom left
-    Eigen::Vector3d p2; p2 <<  1,  1, 0; p2 = p2*tag_width/2; // bottom right
-    Eigen::Vector3d p3; p3 <<  1, -1, 0; p3 = p3*tag_width/2; // top right
-    Eigen::Vector3d p4; p4 << -1, -1, 0; p4 = p4*tag_width/2; // top left
+    double s = tag_width/2;
+    Eigen::Vector3d p1; p1 << -s,  s, 0; // bottom left
+    Eigen::Vector3d p2; p2 <<  s,  s, 0; // bottom right
+    Eigen::Vector3d p3; p3 <<  s, -s, 0; // top right
+    Eigen::Vector3d p4; p4 << -s, -s, 0; // top left
     std::vector<Eigen::Vector3d> tag_X_vec = {p1, p2, p3, p4};
 
     apriltag_detector_t *detector_at = create_detector();
@@ -76,27 +80,68 @@ int main(int argc, char *argv[]){
                                   .height = grayscale_image.rows,
                                   .stride = grayscale_image.cols,
                                   .buf    = grayscale_image.data
-                              };             
+                              };       
+        
+        int nb_mean = 5;
+
+        // std::clock_t t1 = std::clock();
+        // for (unsigned int i=0; i < nb_mean; i++){
+        //     std::cout << "YO" << std::endl;
+        //     apriltag_detector_detect(detector_at, &imu8gray);
+        // }
+        // std::clock_t dt1 = std::clock() - t1;
+        // std::cout << "Mean time for apriltag_detector_detect: " << ((float)dt1/CLOCKS_PER_SEC)/nb_mean << " s" << std::endl;
+        // std::cout << "WESH" << std::endl;
 
         zarray_t *detections = apriltag_detector_detect(detector_at, &imu8gray);
+        // std::cout << "YOGZ " << zarray_size(detections) << std::endl;
+
         for (int i = 0; i < zarray_size(detections); i++) {
+            // std::cout << "YE" << std::endl;
+
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
-            Eigen::Affine3d M_umich = umich_pose_estimation(det, k_vec);
-            Eigen::Affine3d M_opencv = opencv_pose_estimation(det, k_vec);           
-            normalize_transform(M_umich, tag_width);
-            normalize_transform(M_opencv, tag_width);
 
+            std::cout << "Tag id: " << det->id << std::endl; 
+            // std::clock_t t2 = std::clock();
+            // for (unsigned int i=0; i < nb_mean; i++){
+            //     std::cout << "PO" << std::endl;
+            //     umich_pose_estimation(det, k_vec);
+            // }
+            // std::clock_t dt2 = std::clock() - t2;
+            // std::cout << "Mean time for apriltag_detector_detect: " << ((float)dt2/CLOCKS_PER_SEC)/nb_mean << " s" << std::endl;
+
+            // std::clock_t t3 = std::clock();
+            // for (unsigned int i=0; i < nb_mean; i++){
+            //     std::cout << "POOOO" << std::endl;
+            //     opencv_pose_estimation(det, k_vec);           
+            // }
+            // std::clock_t dt3 = std::clock() - t3;
+            // std::cout << "Mean time for apriltag_detector_detect: " << ((float)dt3/CLOCKS_PER_SEC)/nb_mean << " s" << std::endl;
+
+
+            Eigen::Affine3d M_umich = umich_pose_estimation(det, k_vec, tag_width);
+            Eigen::Affine3d M_opencv = opencv_pose_estimation(det, k_vec, tag_width); 
+            Eigen::Affine3d M_ippe1, M_ippe2;
+            float rep_error1, rep_error2;
+            ippe_pose_estimation(det, k_vec, tag_width, M_ippe1, rep_error1, M_ippe2, rep_error2); 
+                      
             // std::cout << std::endl;            
             // std::cout << "Tag id: " << det->id << std::endl; 
             // std::cout << "M_umich" << std::endl;            
             // std::cout << M_umich.matrix() << std::endl;
             // std::cout << "M_opencv" << std::endl;            
             // std::cout << M_opencv.matrix() << std::endl;
+            // std::cout << "M_ippe1" << std::endl;            
+            // std::cout << M_ippe1.matrix() << std::endl;
+            // std::cout << "M_ippe2" << std::endl;            
+            // std::cout << M_ippe2.matrix() << std::endl;
 
-            std::vector<cv::Point2d> reproj_corners_umich = pinholePix(tag_X_vec, M_umich, k_vec, tag_width);
-            std::vector<cv::Point2d> reproj_corners_opencv = pinholePix(tag_X_vec, M_opencv, k_vec, tag_width);
-
+            std::vector<cv::Point2d> reproj_corners_umich  = pinholePix(tag_X_vec, M_umich, k_vec);
+            std::vector<cv::Point2d> reproj_corners_opencv = pinholePix(tag_X_vec, M_opencv, k_vec);
+            std::vector<cv::Point2d> reproj_corners_ippe1  = pinholePix(tag_X_vec, M_ippe1, k_vec);
+            std::vector<cv::Point2d> reproj_corners_ippe2  = pinholePix(tag_X_vec, M_ippe2, k_vec);
+            
             // std::cout << std::endl;            
             std::cout << "Tag id: " << det->id << std::endl; 
             // std::cout << "reproj_corners_umich" << std::endl;            
@@ -105,10 +150,16 @@ int main(int argc, char *argv[]){
             // std::cout << reproj_corners_opencv << std::endl;
             std::cout << "Reprojection error umich : " << reprojection_error(get_corners(det), reproj_corners_umich) << std::endl;
             std::cout << "Reprojection error opencv: " << reprojection_error(get_corners(det), reproj_corners_opencv) << std::endl;
+            std::cout << "Reprojection error ippe1: " << reprojection_error(get_corners(det), reproj_corners_ippe1) << std::endl;
+            std::cout << "Reprojection error ippe2: " << reprojection_error(get_corners(det), reproj_corners_ippe2) << std::endl;
+            std::cout << "rep_error1: " << rep_error1 << std::endl;
+            std::cout << "rep_error2: " << rep_error2 << std::endl;
 
             print_points(img, get_corners(det), cv::viz::Color::blue(), 1, 1);
-            print_points(img, reproj_corners_umich, cv::viz::Color::red(), 1, 1);
-            print_points(img, reproj_corners_opencv, cv::viz::Color::green(), 1, 1);
+            // print_points(img, reproj_corners_umich, cv::viz::Color::red(), 1, 1);
+            print_points(img, reproj_corners_opencv, cv::viz::Color::yellow(), 1, 1);
+            print_points(img, reproj_corners_ippe1, cv::viz::Color::green(), 1, 1);
+            // print_points(img, reproj_corners_ippe2, cv::viz::Color::violet(), 1, 1);
 
         }   
             cv::Size s = img.size()*scale;
@@ -123,7 +174,7 @@ int main(int argc, char *argv[]){
 
 
 
-Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec){
+Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width){
     // To put in the usual camera frame with Z looking in front (RDF)
     Eigen::Affine3d c_M_ac;
     c_M_ac.matrix() = (Eigen::Vector4d() << 1, -1, -1, 1).finished().asDiagonal();
@@ -138,18 +189,24 @@ Eigen::Affine3d umich_pose_estimation(apriltag_detection_t *det, std::vector<dou
     
     Eigen::Affine3d c_M_t = c_M_ac * ac_M_t;
 
+    // Normalize transform
+    c_M_t.matrix().block(0,3,3,1) *= tag_width/2;
+
     return c_M_t;
 }
 
-Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec){
+Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width){
     std::vector<cv::Point2d> corners_pix = get_corners(det);
 
     std::vector<cv::Point3d> obj_pts;
-    // Same order as the 2D corners (anti clockwise, looking at the tag)
-    obj_pts.emplace_back(-1,  1, 0); // bottom left
-    obj_pts.emplace_back( 1,  1, 0); // bottom right
-    obj_pts.emplace_back( 1, -1, 0); // top right
-    obj_pts.emplace_back(-1, -1, 0); // top left
+    // Same order as the 2D corners (anti clockwise, looking at the tag).
+    // Looking at the tag, the reference frame is
+    // X = Right, Y = Down, Z = Inside the plane    
+    double s = tag_width/2;
+    obj_pts.emplace_back(-s,  s, 0); // bottom left
+    obj_pts.emplace_back( s,  s, 0); // bottom right
+    obj_pts.emplace_back( s, -s, 0); // top right
+    obj_pts.emplace_back(-s, -s, 0); // top left
 
     // Solve for pose
     // The estimated r and t brings points from tag frame to camera frame
@@ -171,6 +228,54 @@ Eigen::Affine3d opencv_pose_estimation(apriltag_detection_t *det, std::vector<do
     M.matrix().block(0,3,3,1) = t_eigen;
 
     return M;
+}
+
+void ippe_pose_estimation(apriltag_detection_t *det, std::vector<double> kvec, double tag_width, 
+                            Eigen::Affine3d &M1, 
+                            float &rep_error1, 
+                            Eigen::Affine3d &M2, 
+                            float &rep_error2){
+
+    cv::Mat K = (cv::Mat_<double>(3,3) << kvec[2], 0, kvec[0],
+                                        0, kvec[3], kvec[1],
+                                        0, 0, 1);
+    cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type); // Assuming corrected images
+
+
+    std::vector<cv::Point2d> corners_pix = get_corners(det);
+
+    std::vector<cv::Point3d> obj_pts;
+    // Same order as the 2D corners (anti clockwise, looking at the tag).
+    // Looking at the tag, the reference frame is
+    // X = Right, Y = Down, Z = Inside the plane
+    double s = tag_width/2;
+    obj_pts.emplace_back(-s,  s, 0); // bottom left
+    obj_pts.emplace_back( s,  s, 0); // bottom right
+    obj_pts.emplace_back( s, -s, 0); // top right
+    obj_pts.emplace_back(-s, -s, 0); // top left
+
+    cv::Mat rvec1, tvec1, rvec2, tvec2;
+    IPPE::PoseSolver pose_solver;
+
+        /**
+     * @brief                Finds the two possible poses of a planar object given a set of correspondences and their respective reprojection errors. The poses are sorted with the first having the lowest reprojection error.
+     * @param _objectPoints  Array of 4 or more coplanar object points defined in object coordinates. 1xN/Nx1 3-channel (float or double) where N is the number of points
+     * @param _imagePoints   Array of corresponding image points, 1xN/Nx1 2-channel. This can either be in pixel coordinates or normalized pixel coordinates.
+     * @param _cameraMatrix  Intrinsic camera matrix (same definition as OpenCV). If _imagePoints is in normalized pixel coordinates you must set  _cameraMatrix = cv::noArray()
+     * @param _distCoeffs    Intrinsic camera distortion vector (same definition as OpenCV). If _imagePoints is in normalized pixel coordinates you must set  _cameraMatrix = cv::noArray()
+     * @param _rvec1         First rotation solution (3x1 rotation vector)
+     * @param _tvec1         First translation solution (3x1 vector)
+     * @param reprojErr1     Reprojection error of first solution
+     * @param _rvec2         Second rotation solution (3x1 rotation vector)
+     * @param _tvec2         Second translation solution (3x1 vector)
+     * @param reprojErr2     Reprojection error of second solution
+     */
+    pose_solver.solveGeneric(obj_pts, corners_pix, K, dist_coeffs,
+                            rvec1, tvec1, rep_error1, 
+                            rvec2, tvec2, rep_error2);
+
+    M1 = opencv_pose_to_eigen(rvec1, tvec1);
+    M2 = opencv_pose_to_eigen(rvec2, tvec2);
 }
 
 
@@ -215,7 +320,7 @@ void normalize_transform(Eigen::Affine3d &M, double tag_width){
 }
 
 
-std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec, double tag_width){
+std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec, const Eigen::Affine3d &c_M_t, const std::vector<double> &kvec){
     Eigen::Matrix3d K;
     K << kvec[2], 0, kvec[0],
          0, kvec[3], kvec[1],
@@ -226,8 +331,11 @@ std::vector<cv::Point2d> pinholePix(const std::vector<Eigen::Vector3d> &t_X_vec,
         Eigen::Vector3d projected = K * c_M_t * t_X_vec[i];
         imgpix_vec.push_back(projectedToPix(projected));
     }
+
     return imgpix_vec;
 }
+
+
 
 cv::Point2d projectedToPix(const Eigen::Vector3d &projected){
     cv::Point2d imgpix = cv::Point2d(projected(0)/projected(2), projected(1)/projected(2));
@@ -238,7 +346,7 @@ void print_points(cv::Mat im_inout, const std::vector<cv::Point2d> &points, cons
     double scale_radius = 1;
     for (unsigned int i=0; i < points.size(); i++){
         cv::circle(im_inout, points[i], radius*scale_radius, color, thickness);
-        // scale_radius += 1;
+        scale_radius += 2;
     }
 }
 
@@ -254,10 +362,27 @@ std::vector<cv::Point2d> get_corners(apriltag_detection_t *det){
 }
 
 double reprojection_error(const std::vector<cv::Point2d> &pvec, const std::vector<cv::Point2d> &rep_pvec){
-    // Check same size pvec and rep_pvec
-    double error = 0;
-    for (unsigned i=0; i < pvec.size(); i++){
-        error += cv::norm(rep_pvec[i]-pvec[i]);
+    float dx, dy;
+    float err = 0;
+    for (unsigned int i = 0; i < pvec.size(); i++) {
+        dx = rep_pvec[i].x - pvec[i].x;
+        dy = rep_pvec[i].y - pvec[i].y;
+        err += dx * dx + dy * dy;
     }
-    return error/pvec.size();
+    err = sqrt(err / (2.0f * pvec.size()));
+
+    return err;
+}
+
+Eigen::Affine3d opencv_pose_to_eigen(const cv::Mat &rvec, const cv::Mat &tvec){
+    // Puts the result in a Eigen affine Transform   
+    cv::Matx33d rmat;
+    cv::Rodrigues(rvec, rmat);
+    Eigen::Matrix3d R_eigen; cv2eigen(rmat, R_eigen);
+    Eigen::Vector3d t_eigen; cv2eigen(tvec, t_eigen);
+    Eigen::Affine3d M;
+    M.matrix().block(0,0,3,3) = R_eigen;
+    M.matrix().block(0,3,3,1) = t_eigen;
+
+    return M;
 }
